@@ -71,7 +71,7 @@ func (d *ServicioDocumentos) esperarKude(ctx context.Context, cdc string, limite
 	soloConsulta := false
 
 	for {
-		s := solicitud{metodo: http.MethodGet, ruta: ruta, binario: true}
+		s := solicitud{metodo: http.MethodGet, ruta: ruta, acepta: aceptaPDF}
 		if soloConsulta {
 			s.query = url.Values{"soloConsulta": {"true"}}
 		}
@@ -100,6 +100,62 @@ func (d *ServicioDocumentos) esperarKude(ctx context.Context, cdc string, limite
 			reintentoSinConsultaHecho = true
 		}
 	}
+}
+
+// DescargarXML devuelve el XML firmado tal como se envió a SIFEN, con el código QR incluido. Está disponible desde
+// que el documento se registra, sin esperar la respuesta de SIFEN; si todavía no tiene XML, la API responde 409
+// documento-xml-not-available.
+func (d *ServicioDocumentos) DescargarXML(ctx context.Context, cdc string) ([]byte, error) {
+	return d.descargar(ctx, "/"+segmento(cdc)+"/xml", nil, aceptaXML)
+}
+
+// OpcionesTicket configura DescargarKudeTicket.
+type OpcionesTicket struct {
+	// Ancho es el ancho del papel en mm: 80 o 58. Cero es 80.
+	Ancho int32
+	// Resumen omite el detalle de ítems y de impuestos (Manual Técnico V150, cap. 13.7).
+	Resumen bool
+}
+
+// DescargarKudeTicket devuelve el KuDE en cinta de papel, en PDF, para impresoras térmicas de 80 o 58 mm. Se genera
+// en cada pedido. Sólo existe para facturas y notas de crédito o débito: otros tipos responden 501
+// kude-not-supported.
+func (d *ServicioDocumentos) DescargarKudeTicket(ctx context.Context, cdc string, opciones OpcionesTicket) ([]byte, error) {
+	return d.descargar(ctx, "/"+segmento(cdc)+"/kude/ticket", queryTicket("ancho", opciones.Ancho, opciones.Resumen), aceptaPDF)
+}
+
+// OpcionesTicketImagen configura DescargarKudeTicketImagen.
+type OpcionesTicketImagen struct {
+	// Puntos son los puntos por línea de la impresora a 203 dpi: 576 o 512 para papel de 80 mm, 384 para 58 mm. Cero
+	// es 576.
+	Puntos int32
+	// Resumen omite el detalle de ítems y de impuestos (Manual Técnico V150, cap. 13.7).
+	Resumen bool
+}
+
+// DescargarKudeTicketImagen devuelve el ticket como PNG de 1 bit con el ancho exacto de una línea de la impresora,
+// para imprimirlo con el comando de imagen ráster de ESC/POS (GS v 0).
+func (d *ServicioDocumentos) DescargarKudeTicketImagen(ctx context.Context, cdc string, opciones OpcionesTicketImagen) ([]byte, error) {
+	return d.descargar(ctx, "/"+segmento(cdc)+"/kude/ticket/imagen", queryTicket("puntos", opciones.Puntos, opciones.Resumen), aceptaPNG)
+}
+
+func queryTicket(medida string, valor int32, resumen bool) url.Values {
+	query := url.Values{}
+	if valor != 0 {
+		query.Set(medida, strconv.Itoa(int(valor)))
+	}
+	if resumen {
+		query.Set("resumen", "true")
+	}
+	return query
+}
+
+func (d *ServicioDocumentos) descargar(ctx context.Context, ruta string, query url.Values, acepta string) ([]byte, error) {
+	r, err := d.c.solicitar(ctx, solicitud{metodo: http.MethodGet, ruta: rutaDocumentos + ruta, query: query, acepta: acepta})
+	if err != nil {
+		return nil, err
+	}
+	return r.cuerpo, nil
 }
 
 // Cancelar cancela en SIFEN un documento aprobado.

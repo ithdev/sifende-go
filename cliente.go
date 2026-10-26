@@ -18,7 +18,7 @@ import (
 )
 
 // Version es la versión del SDK. Viaja en el User-Agent.
-const Version = "0.1.0"
+const Version = "0.2.0"
 
 // URLBase es la URL de la API. Es la misma para los tres ambientes: el ambiente lo fija la API key.
 const URLBase = "https://api.sifende.com.py"
@@ -37,6 +37,7 @@ type Cliente struct {
 	Contribuyente *ServicioContribuyente
 	Padron        *ServicioPadron
 	Catalogos     *ServicioCatalogos
+	Webhooks      *ServicioWebhooks
 
 	apiKey        string
 	ambiente      Ambiente
@@ -129,6 +130,7 @@ func NuevoCliente(apiKey string, opciones ...Opcion) (*Cliente, error) {
 	c.Contribuyente = &ServicioContribuyente{c}
 	c.Padron = &ServicioPadron{c}
 	c.Catalogos = &ServicioCatalogos{c}
+	c.Webhooks = &ServicioWebhooks{c}
 	return c, nil
 }
 
@@ -144,8 +146,17 @@ type solicitud struct {
 	// clave es la Idempotency-Key. Con clave, un corte de conexión se reintenta aunque el método no sea GET.
 	clave   string
 	sinAuth bool
-	binario bool
+	// acepta es el Accept de una descarga (PDF, XML, PNG): su éxito se devuelve en bytes, sin leerlo como JSON.
+	// Vacío es una respuesta JSON.
+	acepta string
 }
+
+// Accept de cada descarga. Incluyen JSON porque los errores, y el 202 del KuDE, vienen en JSON.
+const (
+	aceptaPDF = "application/pdf, application/json, application/problem+json"
+	aceptaXML = "application/xml, application/json, application/problem+json"
+	aceptaPNG = "image/png, application/json, application/problem+json"
+)
 
 type respuesta struct {
 	status  int
@@ -219,8 +230,8 @@ func (c *Cliente) intentar(ctx context.Context, s solicitud, destino string, cue
 		return nil, err
 	}
 	req.Header.Set("Accept", "application/json")
-	if s.binario {
-		req.Header.Set("Accept", "application/pdf, application/json, application/problem+json")
+	if s.acepta != "" {
+		req.Header.Set("Accept", s.acepta)
 	}
 	req.Header.Set("User-Agent", "sifende-sdk-go/"+Version)
 	if !s.sinAuth {
@@ -244,7 +255,7 @@ func (c *Cliente) intentar(ctx context.Context, s solicitud, destino string, cue
 	}
 	r := &respuesta{status: res.StatusCode, headers: res.Header, cuerpo: leido}
 	exito := r.status >= 200 && r.status < 300
-	binario := s.binario && exito && r.status != http.StatusAccepted
+	binario := s.acepta != "" && exito && r.status != http.StatusAccepted
 	// Un error HTTP conserva el texto para diagnosticarlo; un éxito ilegible no puede pasar por el DTO esperado.
 	if exito && !binario && len(leido) > 0 && esJSON(res.Header) && !json.Valid(leido) {
 		return nil, errJSONIlegible
