@@ -78,6 +78,17 @@ func (r *ServicioCatalogos) Ciudades(ctx context.Context, distritoID int32) ([]C
 	return datos.Data, nil
 }
 
+// CiudadesDeDepartamento devuelve todas las ciudades de un departamento, sin pasar por sus distritos, con el código
+// que SIFEN espera en el domicilio del receptor.
+func (r *ServicioCatalogos) CiudadesDeDepartamento(ctx context.Context, departamentoID int32) ([]CiudadDTO, error) {
+	var datos ApiResponseListCiudadDTO
+	ruta := "/api/v1/geografia/departamentos/" + strconv.Itoa(int(departamentoID)) + "/ciudades"
+	if err := r.obtener(ctx, ruta, &datos); err != nil {
+		return nil, err
+	}
+	return datos.Data, nil
+}
+
 func (r *ServicioCatalogos) obtener(ctx context.Context, ruta string, destino any) error {
 	return r.c.obtenerJSON(ctx, solicitud{metodo: http.MethodGet, ruta: ruta, sinAuth: true}, destino)
 }

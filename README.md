@@ -118,6 +118,9 @@ Todas las operaciones reciben un `context.Context`: cancelarlo corta la operaci�
 | `Documentos.Emitir(ctx, documento, idempotencyKey)` | `POST /api/v1/documento-electronico` |
 | `Documentos.ConsultarEstado(ctx, cdc)` | `GET /api/v1/documento-electronico/status/{cdc}` |
 | `Documentos.DescargarKude(ctx, cdc, espera)` | `GET /api/v1/documento-electronico/{cdc}/kude` |
+| `Documentos.DescargarKudeTicket(ctx, cdc, opciones)` | `GET /api/v1/documento-electronico/{cdc}/kude/ticket` |
+| `Documentos.DescargarKudeTicketImagen(ctx, cdc, opciones)` | `GET /api/v1/documento-electronico/{cdc}/kude/ticket/imagen` |
+| `Documentos.DescargarXML(ctx, cdc)` | `GET /api/v1/documento-electronico/{cdc}/xml` |
 | `Documentos.Cancelar(ctx, cdc, cancelacion, idempotencyKey)` | `POST /api/v1/documento-electronico/{cdc}/cancelar` |
 | `Documentos.Nominar(ctx, cdc, nominacion, idempotencyKey)` | `POST /api/v1/documento-electronico/{cdc}/nominar` |
 | `Documentos.Inutilizar(ctx, rango, idempotencyKey)` | `POST /api/v1/documento-electronico/inutilizar` |
@@ -127,12 +130,21 @@ Todas las operaciones reciben un `context.Context`: cancelarlo corta la operaci�
 | `Contribuyente.ConsultarConsumoPlan(ctx)` | `GET /api/v1/contribuyente/plan-consumo` |
 | `Padron.Consultar(ctx, rucOCedula)` | `GET /api/v1/padron/{documento}` |
 | `Catalogos.Enumeraciones(ctx)` | `GET /api/v1/public/enums` |
-| `Catalogos.Departamentos(ctx)`, `Distritos(ctx, id)`, `Ciudades(ctx, id)` | `GET /api/v1/geografia/…` |
+| `Catalogos.Departamentos(ctx)`, `Distritos(ctx, id)`, `Ciudades(ctx, id)`, `CiudadesDeDepartamento(ctx, id)` | `GET /api/v1/geografia/…` |
+| `Webhooks.Listar(ctx)`, `Crear(ctx, webhook)` | `GET`, `POST /api/v1/contribuyente/webhooks` |
+| `Webhooks.Consultar(ctx, id)`, `Actualizar(ctx, id, webhook)`, `Eliminar(ctx, id)` | `GET`, `PUT`, `DELETE /api/v1/contribuyente/webhooks/{id}` |
+| `Webhooks.RotarSecreto(ctx, id)` | `POST /api/v1/contribuyente/webhooks/{id}/rotar` |
+| `Webhooks.ListarEntregas(ctx, id, filtro)` | `GET /api/v1/contribuyente/webhooks/{id}/entregas` |
 
 Los catálogos son públicos y no envían la API key.
 
 `DescargarKude` espera hasta 3 minutos a que el PDF esté listo; si no lo está, devuelve `*ErrorKudePendiente`. Con
 `espera` distinta de cero cambiás ese plazo.
+
+`DescargarKudeTicket` devuelve el KuDE en cinta de papel para impresoras térmicas (`Ancho` 80 o 58 mm) y
+`DescargarKudeTicketImagen` el mismo ticket como PNG de 1 bit para ESC/POS (`Puntos` 576, 512 o 384). Con
+`Resumen: true` omiten el detalle de ítems e impuestos. Sólo existen para facturas y notas de crédito o débito.
+`DescargarXML` devuelve el XML firmado tal como se envió a SIFEN.
 
 Para poder retomar una operación después de un corte, generá vos la `idempotencyKey` y guardala antes de enviar. Si
 pasás `""`, el SDK genera un UUID que sólo reusa en sus propios reintentos.
@@ -200,6 +212,10 @@ http.HandleFunc("POST /webhooks/sifende", func(w http.ResponseWriter, r *http.Re
 
 Los tipos de evento son `documento.aprobado`, `documento.rechazado`, `documento.cancelado` y `lote.procesado`. Su
 `Data` se lee con `evento.Documento()`, `evento.Cancelacion()` o `evento.Lote()`.
+
+`Webhooks` registra y administra los endpoints. El secreto `whsec_…` llega sólo en la respuesta de `Crear` y de
+`RotarSecreto`, y ninguno de los dos admite `Idempotency-Key`: el SDK no los repite ante un corte. Si se corta un
+`Crear`, revisá `Listar` antes de volver a intentar.
 
 Una entrega puede repetirse: deduplicá por `evento.ID`. `VerificarWebhook` rechaza una entrega si su
 `X-Sifende-Timestamp` difiere más de 5 minutos de tu reloj; ajustalo con `Tolerancia`. Durante una rotación de secreto,
