@@ -18,7 +18,7 @@ import (
 )
 
 // Version es la versión del SDK. Viaja en el User-Agent.
-const Version = "0.1.0"
+const Version = "0.2.0"
 
 // URLBase es la URL de la API. Es la misma para los tres ambientes: el ambiente lo fija la API key.
 const URLBase = "https://api.sifende.com.py"
