@@ -1,5 +1,9 @@
 # sifende-go
 
+[![Go Reference](https://pkg.go.dev/badge/github.com/ithdev/sifende-go.svg)](https://pkg.go.dev/github.com/ithdev/sifende-go)
+[![CI](https://github.com/ithdev/sifende-go/actions/workflows/ci.yml/badge.svg)](https://github.com/ithdev/sifende-go/actions/workflows/ci.yml)
+[![Licencia: Apache 2.0](https://img.shields.io/badge/licencia-Apache%202.0-blue)](LICENSE)
+
 SDK de Sifende para Go: emití facturas electrónicas, notas de crédito y eventos de SIFEN, verificá webhooks y calculá
 totales con las mismas reglas que la API.
 
@@ -14,6 +18,8 @@ go get github.com/ithdev/sifende-go
 ```
 
 Requiere Go 1.26 o posterior.
+
+La referencia de cada tipo y función está en [pkg.go.dev](https://pkg.go.dev/github.com/ithdev/sifende-go).
 
 Necesitás una API key de Sifende. El prefijo de la clave fija el ambiente: `sk_live_`, `sk_test_` o `sk_sandbox_`. La
 referencia completa de la API está en [sifende.com.py/docs](https://sifende.com.py/docs).
@@ -234,6 +240,12 @@ regenerarlo contra producción o contra una copia local del spec:
 go generate ./...
 SIFENDE_OPENAPI=./openapi.json go generate ./...
 ```
+
+## Soporte
+
+- Errores del SDK: abrí un [issue](https://github.com/ithdev/sifende-go/issues).
+- Vulnerabilidades: reportalas en privado, como explica [SECURITY.md](SECURITY.md).
+- Tu cuenta, tus documentos o la API: escribinos a [soporte@sifende.com.py](mailto:soporte@sifende.com.py).
 
 ## Licencia
 
